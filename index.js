@@ -1,76 +1,44 @@
-const express = require('express');
-const { spawn } = require('child_process');
+const { spawn } = require("child_process");
 
-const app = express();
-const PORT = 3000;
-
-// قائمة القنوات
-const streamSources = [
- "http://mo3ad.xyz/5aF5xKechP/kWtQu4CKpx/",
- "http://mutant.arrox.top:80/live/oWg8mm2z2/C1LwyPEFOj/",
- "http://asterix-iptv.club:25461/24SuadViberRazmjena50/SPfbtyeepaup/",
- "http://173.212.193.243:8080/wAfWlqYhLp/vDIyvgtHHf/"
+const streams = [
+ {
+  url: "https://very-fina-josef-b3438143.koyeb.app/stream/5",
+  fbKey: "FB-9340574805980999-1-Ab0DWaPTBywnEYZ5-fXpyMG4"
+ },
+ // أضف المزيد من الروابط هنا
 ];
 
-// دالة لتشغيل FFmpeg وإعادة البث
+function startStreaming(stream) {
+ const fbRTMP = `rtmps://live-api-s.facebook.com:443/rtmp/${stream.fbKey}`;
+ console.log(`🔴 بدء البث إلى فيسبوك للرابط: ${stream.url}`);
 
+ const ffmpeg = spawn("ffmpeg", [
+  "-re",
+  "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+  "-referer", "http://mutant.arrox.top/",
+  "-i", stream.url,
+  "-c:v", "libx264",
+  "-preset", "fast",
+  "-b:v", "2000k",
+  "-maxrate", "2000k",
+  "-bufsize", "4000k",
+  "-pix_fmt", "yuv420p",
+  "-g", "50",
+  "-c:a", "aac",
+  "-b:a", "128k",
+  "-ar", "44100",
+  "-f", "flv", fbRTMP
+ ]);
 
-const fs = require('fs');
-const path = require('path');
+ ffmpeg.stdout.on("data", data => console.log(`📺 [${stream.url}] FFmpeg: ${data}`));
+ ffmpeg.stderr.on("data", data => console.error(`⚠️ [${stream.url}] FFmpeg Error: ${data.toString()}`));
+ ffmpeg.on("close", code => {
+  console.log(`🚫 [${stream.url}] FFmpeg انتهى برمز ${code}`);
+  console.log("🔄 إعادة تشغيل البث خلال 5 ثوانٍ...");
+  setTimeout(() => startStreaming(stream), 5000);
+ });
+ ffmpeg.on("error", err => console.error(`❌ [${stream.url}] خطأ أثناء تشغيل FFmpeg: ${err.message}`));
+}
 
-const startStream = (sourceUrl, channel, res) => {
-  console.log(`🔄 بدء إعادة بث القناة: ${channel}`);
-
-  // إنشاء مجلد لحفظ ملفات HLS
-  const outputDir = path.join(__dirname, `hls/${channel}`);
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
-  const ffmpeg = spawn('ffmpeg', [
-  '-loglevel', 'debug',          // إضافة لتسجيل التفاصيل
-  '-i', sourceUrl,               // إدخال الرابط الأصلي
-  '-preset', 'veryfast',         // تحسين الأداء
-  '-tune', 'zerolatency',        // تقليل التأخير
-  '-c:v', 'libx264',             // ترميز الفيديو
-  '-c:a', 'aac',                 // ترميز الصوت
-  '-f', 'flv',                   // إخراج البيانات بتنسيق FLV
-  'pipe:1'                       // إرسال البيانات إلى المخرج القياسي
-]);
-
-  ffmpeg.stderr.on('data', (data) => {
-    console.error(`⚠️ خطأ FFmpeg: ${data.toString()}`);
-  });
-
-  ffmpeg.on('close', (code) => {
-    console.log(`⏹️ انتهى البث للقناة ${channel} مع كود الخروج: ${code}`);
-  });
-
-  res.sendFile(`${outputDir}/master.m3u8`);
-};
-
-module.exports = startStream;
-
-// مسار البث
-app.get('/stream/:channel', async (req, res) => {
- const channel = req.params.channel;
-
- for (const source of streamSources) {
-  const sourceUrl = `${source}${channel}`;
-  try {
-   console.log(`🔍 تجربة المصدر: ${sourceUrl}`);
-   res.setHeader('Content-Type', 'video/mp4');
-   startStream(sourceUrl, channel, res);
-   return;
-  } catch (error) {
-   console.error(`❌ فشل المصدر: ${source}`);
-  }
- }
-
- res.status(500).send("❌ لا يوجد بث متاح.");
-});
-
-// تشغيل السيرفر
-app.listen(PORT, () => {
- console.log(`🚀 السيرفر يعمل على http://localhost:${PORT}`);
-});
+// بدء البث لجميع الروابط
+streams.forEach(stream => startStreaming(stream));

@@ -1,7 +1,7 @@
 const { spawn } = require("child_process");
 
-const streamURL = "https://google-app-cookies-cool.onrender.com/stream/1469.ts";
-const fbStreamKey = "FB-1339037530605333-1-Ab3Dl2TwSdLgO-2hHT-vdlc7";
+const streamURL = "https://very-fina-josef-b3438143.koyeb.app/stream/5";
+const fbStreamKey = "FB-9390277574344055-1-Ab3fz8zN762RjaRAx8gzFhdx";
 const fbRTMP = `rtmps://live-api-s.facebook.com:443/rtmp/${fbStreamKey}`;
 
 function startStreaming() {
